@@ -22,16 +22,28 @@ export default function Home() {
   const [availability, setAvailability] = useState<Record<string, boolean | null>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(getCurrentMatchDate());
 
-  const matchDate = getCurrentMatchDate();
-  const matchDateStr = formatDateForDb(matchDate);
-  const byePlayerName = getCurrentByePlayer(matchDate);
+  const matchDateStr = formatDateForDb(selectedDate);
+  const byePlayerName = getCurrentByePlayer(selectedDate);
 
   // Check auth on mount
   useEffect(() => {
     const authStatus = localStorage.getItem('bowling_auth') === 'true';
     setIsAuthenticated(authStatus);
   }, []);
+
+  // Generate next 8 weeks for the dropdown
+  const getUpcomingWeeks = () => {
+    const weeks = [];
+    const currentWeek = getCurrentMatchDate();
+    for (let i = 0; i < 8; i++) {
+      const date = new Date(currentWeek);
+      date.setDate(date.getDate() + (i * 7));
+      weeks.push(date);
+    }
+    return weeks;
+  };
 
   // Fetch players and availability
   const fetchData = useCallback(async () => {
@@ -74,7 +86,7 @@ export default function Home() {
       setIsLoading(false);
       setIsSyncing(false);
     }
-  }, [isAuthenticated, byePlayerName, matchDateStr]);
+  }, [isAuthenticated, matchDateStr]);
 
   useEffect(() => {
     fetchData();
@@ -129,16 +141,16 @@ export default function Home() {
   );
 
   // Build player data with availability status
-  const playersWithAvailability: PlayerWithAvailability[] = players.map(
-    (player) => {
+  const playersWithAvailability: PlayerWithAvailability[] = players
+    .map((player) => {
       const isBye = player.name === byePlayerName;
       const isAvailable = availability[player.id] ?? null;
       // Bye player is locked unless an active player is out
       const isLocked = isBye && !activePlayersOut;
 
       return { player, isAvailable, isBye, isLocked };
-    }
-  );
+    })
+    .sort((a, b) => a.player.name.localeCompare(b.player.name)); // Sort alphabetically
 
   // Count available players (only those who explicitly said "I'm in")
   const availableCount = playersWithAvailability.filter(
@@ -154,8 +166,8 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <BowlingLogo size={40} />
             <div>
-              <h1 className="font-bold text-lg">Office 10&apos;s</h1>
-              <p className="text-white/80 text-sm">Bowling</p>
+              <p className="text-white/80 text-sm">Office 10s</p>
+              <h1 className="font-bold text-2xl">Can U Make It?</h1>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -185,16 +197,29 @@ export default function Home() {
       {/* Main Content */}
       <main className="max-w-lg mx-auto p-4 space-y-4">
         {/* Date Card */}
-        <div className="bg-white rounded-xl p-4 shadow-sm border flex items-center gap-3">
-          <div className="w-12 h-12 bg-bowling-red/10 rounded-lg flex items-center justify-center">
-            <Calendar className="w-6 h-6 text-bowling-red" />
+        <div className="bg-white rounded-xl p-4 shadow-sm border">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-12 h-12 bg-bowling-red/10 rounded-lg flex items-center justify-center">
+              <Calendar className="w-6 h-6 text-bowling-red" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Select Match Week</p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm text-gray-500">Next Match</p>
-            <p className="font-semibold text-gray-900">
-              {formatMatchDate(matchDate)}
-            </p>
-          </div>
+          <select
+            value={formatDateForDb(selectedDate)}
+            onChange={(e) => {
+              const newDate = new Date(e.target.value + 'T00:00:00');
+              setSelectedDate(newDate);
+            }}
+            className="w-full px-4 py-2 rounded-lg border-2 border-gray-300 font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-bowling-red focus:border-bowling-red"
+          >
+            {getUpcomingWeeks().map((date) => (
+              <option key={formatDateForDb(date)} value={formatDateForDb(date)}>
+                {formatMatchDate(date)}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Bye Indicator */}
@@ -230,10 +255,12 @@ export default function Home() {
           </div>
         )}
 
-        {/* Footer Note */}
-        <p className="text-center text-sm text-gray-400 pt-4">
-          Tap the toggle to change your availability
-        </p>
+        {/* Footer Tagline */}
+        <div className="text-center pt-6 pb-4">
+          <p className="text-lg font-bold text-gray-700 italic">
+            It&apos;s not how...it&apos;s how many!
+          </p>
+        </div>
       </main>
     </div>
   );
