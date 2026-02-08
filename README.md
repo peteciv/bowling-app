@@ -23,7 +23,7 @@ A mobile-first PWA for tracking bowling team availability with automatic bye rot
 ## Tech Stack
 
 - **Framework**: Next.js 14 (App Router)
-- **Database**: Supabase (PostgreSQL)
+- **Database**: PostgreSQL (Railway)
 - **Styling**: Tailwind CSS
 - **Icons**: Lucide React
 - **Hosting**: Vercel-ready
@@ -36,11 +36,13 @@ A mobile-first PWA for tracking bowling team availability with automatic bye rot
 npm install
 ```
 
-### 2. Set Up Supabase Database
+### 2. Set Up Railway Database
 
-1. Create a new Supabase project at [supabase.com](https://supabase.com)
-2. Go to SQL Editor
-3. Copy and run the SQL from `DATABASE_SCHEMA.md`
+1. Create a new Railway project at [railway.app](https://railway.app)
+2. Add a PostgreSQL database to your project
+3. Go to the database → Data tab → Query
+4. Copy and run the SQL from `DATABASE_SCHEMA.md`
+5. Copy the `DATABASE_URL` from the Variables tab
 
 ### 3. Configure Environment Variables
 
@@ -52,8 +54,7 @@ cp .env.example .env.local
 
 Fill in your values:
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+DATABASE_URL=postgresql://user:password@host:port/database
 TEAM_PASSWORD=your-team-password
 ```
 
@@ -104,8 +105,7 @@ The bye rotates weekly starting February 6, 2025:
 1. Push to GitHub
 2. Import in Vercel
 3. Add environment variables:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `DATABASE_URL` (from Railway)
    - `TEAM_PASSWORD`
 4. Deploy!
 
@@ -135,7 +135,7 @@ bowling-app/
 │   ├── StatusBanner.tsx   # Traffic light banner
 │   └── BowlingLogo.tsx    # SVG logo
 ├── lib/
-│   ├── supabase.ts        # Supabase client
+│   ├── db.ts              # PostgreSQL connection
 │   ├── types.ts           # TypeScript types
 │   ├── rotation.ts        # Bye calculation logic
 │   └── utils.ts           # Utility functions

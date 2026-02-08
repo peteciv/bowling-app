@@ -1,19 +1,15 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { query } from '@/lib/db';
+import type { Player } from '@/lib/types';
 
 // GET - Fetch all players
 export async function GET() {
   try {
-    const { data: players, error } = await supabase
-      .from('players')
-      .select('*')
-      .order('rotation_order', { ascending: true });
+    const players = await query<Player>(
+      'SELECT * FROM players ORDER BY rotation_order ASC'
+    );
 
-    if (error) {
-      throw error;
-    }
-
-    return NextResponse.json({ players: players || [] });
+    return NextResponse.json({ players });
   } catch (error) {
     console.error('Error fetching players:', error);
     return NextResponse.json(

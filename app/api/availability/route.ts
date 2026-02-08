@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { query, queryOne } from '@/lib/db';
 
 // GET - Fetch availability for a match date
 export async function GET(request: NextRequest) {
@@ -15,15 +15,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Get the match day record
-    const { data: matchDay, error: matchError } = await supabase
-      .from('match_days')
-      .select('id')
-      .eq('match_date', matchDate)
-      .single();
-
-    if (matchError && matchError.code !== 'PGRST116') {
-      throw matchError;
-    }
+    const matchDay = await queryOne<{ id: string }>(
+      'SELECT id FROM match_days WHERE match_date = $1',
+      [matchDate]
+    );
 
     if (!matchDay) {
       // No match day exists yet, return empty availability
@@ -31,18 +26,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Get availability for this match day
-    const { data: availability, error: availError } = await supabase
-      .from('availability')
-      .select('player_id, is_available')
-      .eq('match_day_id', matchDay.id);
-
-    if (availError) {
-      throw availError;
-    }
+    const availability = await query<{ player_id: string; is_available: boolean | null }>(
+      'SELECT player_id, is_available FROM availability WHERE match_day_id = $1',
+      [matchDay.id]
+    );
 
     return NextResponse.json({
       matchDayId: matchDay.id,
-      availability: availability || []
+      availability
     });
   } catch (error) {
     console.error('Error fetching availability:', error);
@@ -56,9 +47,10 @@ export async function GET(request: NextRequest) {
 // POST - Update availability for a player
 export async function POST(request: NextRequest) {
   try {
-    const { matchDate, playerId, isAvailable } = await request.json();
+    const body = await request.json();
+    const { matchDate, playerId, isAvailable } = body;
 
-    if (!matchDate || !playerId || isAvailable === undefined) {
+    if (!matchDate || !playerId || !('isAvailable' in body)) {
       return NextResponse.json(
         { error: 'matchDate, playerId, and isAvailable are required' },
         { status: 400 }
@@ -66,26 +58,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Get or create the match day
-    let { data: matchDay, error: matchError } = await supabase
-      .from('match_days')
-      .select('id')
-      .eq('match_date', matchDate)
-      .single();
+    let matchDay = await queryOne<{ id: string }>(
+      'SELECT id FROM match_days WHERE match_date = $1',
+      [matchDate]
+    );
 
-    if (matchError && matchError.code === 'PGRST116') {
+    if (!matchDay) {
       // Match day doesn't exist, create it
-      const { data: newMatch, error: createError } = await supabase
-        .from('match_days')
-        .insert({ match_date: matchDate })
-        .select('id')
-        .single();
-
-      if (createError) {
-        throw createError;
-      }
-      matchDay = newMatch;
-    } else if (matchError) {
-      throw matchError;
+      matchDay = await queryOne<{ id: string }>(
+        'INSERT INTO match_days (match_date) VALUES ($1) RETURNING id',
+        [matchDate]
+      );
     }
 
     if (!matchDay) {
@@ -93,21 +76,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Upsert availability
-    const { error: upsertError } = await supabase
-      .from('availability')
-      .upsert(
-        {
-          match_day_id: matchDay.id,
-          player_id: playerId,
-          is_available: isAvailable,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'match_day_id,player_id' }
-      );
-
-    if (upsertError) {
-      throw upsertError;
-    }
+    await query(
+      `INSERT INTO availability (match_day_id, player_id, is_available, updated_at)
+       VALUES ($1, $2, $3, NOW())
+       ON CONFLICT (match_day_id, player_id)
+       DO UPDATE SET is_available = $3, updated_at = NOW()`,
+      [matchDay.id, playerId, isAvailable]
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {

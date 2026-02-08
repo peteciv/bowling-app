@@ -19,7 +19,7 @@ import type { Player, PlayerWithAvailability } from '@/lib/types';
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
-  const [availability, setAvailability] = useState<Record<string, boolean>>({});
+  const [availability, setAvailability] = useState<Record<string, boolean | null>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -47,10 +47,10 @@ export default function Home() {
       if (playersData.players) {
         setPlayers(playersData.players);
 
-        // Initialize availability for all players (default: active players are "in", bye is "out")
-        const initialAvailability: Record<string, boolean> = {};
+        // Initialize availability for all players (default: null = no response)
+        const initialAvailability: Record<string, boolean | null> = {};
         playersData.players.forEach((p: Player) => {
-          initialAvailability[p.id] = p.name !== byePlayerName;
+          initialAvailability[p.id] = null;
         });
 
         // Fetch saved availability
@@ -60,7 +60,7 @@ export default function Home() {
         if (availData.availability && availData.availability.length > 0) {
           // Override with saved availability
           availData.availability.forEach(
-            (a: { player_id: string; is_available: boolean }) => {
+            (a: { player_id: string; is_available: boolean | null }) => {
               initialAvailability[a.player_id] = a.is_available;
             }
           );
@@ -81,7 +81,8 @@ export default function Home() {
   }, [fetchData]);
 
   // Toggle availability for a player
-  const handleToggle = async (playerId: string, newValue: boolean) => {
+  const handleToggle = async (playerId: string, newValue: boolean | null) => {
+    const previousValue = availability[playerId];
     // Optimistic update
     setAvailability((prev) => ({ ...prev, [playerId]: newValue }));
 
@@ -98,7 +99,7 @@ export default function Home() {
     } catch (error) {
       console.error('Error updating availability:', error);
       // Revert on error
-      setAvailability((prev) => ({ ...prev, [playerId]: !newValue }));
+      setAvailability((prev) => ({ ...prev, [playerId]: previousValue }));
     }
   };
 
@@ -122,16 +123,16 @@ export default function Home() {
     return <PasswordGate onAuthenticated={() => setIsAuthenticated(true)} />;
   }
 
-  // Check if any active (non-bye) player is out
+  // Check if any active (non-bye) player is explicitly out (not null, not true)
   const activePlayersOut = players.some(
-    (p) => p.name !== byePlayerName && !availability[p.id]
+    (p) => p.name !== byePlayerName && availability[p.id] === false
   );
 
   // Build player data with availability status
   const playersWithAvailability: PlayerWithAvailability[] = players.map(
     (player) => {
       const isBye = player.name === byePlayerName;
-      const isAvailable = availability[player.id] ?? !isBye;
+      const isAvailable = availability[player.id] ?? null;
       // Bye player is locked unless an active player is out
       const isLocked = isBye && !activePlayersOut;
 
@@ -139,9 +140,9 @@ export default function Home() {
     }
   );
 
-  // Count available players
+  // Count available players (only those who explicitly said "I'm in")
   const availableCount = playersWithAvailability.filter(
-    (p) => p.isAvailable
+    (p) => p.isAvailable === true
   ).length;
   const trafficState = getTrafficState(availableCount);
 

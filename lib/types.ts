@@ -25,7 +25,7 @@ export interface Availability {
 // Combined player data with availability status
 export interface PlayerWithAvailability {
   player: Player;
-  isAvailable: boolean;
+  isAvailable: boolean | null; // null = no response, true = in, false = out
   isBye: boolean;
   isLocked: boolean; // Bye player is locked unless an active player is out
 }

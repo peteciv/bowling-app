@@ -3,6 +3,8 @@
 ## Overview
 This schema supports the Office 10's Bowling Availability tracking system with player management, match day scheduling, and availability tracking.
 
+**Database**: PostgreSQL (Railway)
+
 ## Tables
 
 ### 1. players
@@ -48,7 +50,7 @@ CREATE TABLE availability (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   match_day_id UUID REFERENCES match_days(id) ON DELETE CASCADE,
   player_id UUID REFERENCES players(id) ON DELETE CASCADE,
-  is_available BOOLEAN DEFAULT TRUE,
+  is_available BOOLEAN DEFAULT NULL,  -- NULL = no response, TRUE = in, FALSE = out
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(match_day_id, player_id)
 );
@@ -58,10 +60,12 @@ CREATE INDEX idx_availability_match_day ON availability(match_day_id);
 CREATE INDEX idx_availability_player ON availability(player_id);
 ```
 
-## Row Level Security (RLS)
+## Row Level Security (RLS) - Optional
+
+Note: RLS is optional since the app uses password-based authentication at the application level. If you want additional database-level security, you can enable it:
 
 ```sql
--- Enable RLS on all tables
+-- Enable RLS on all tables (optional)
 ALTER TABLE players ENABLE ROW LEVEL SECURITY;
 ALTER TABLE match_days ENABLE ROW LEVEL SECURITY;
 ALTER TABLE availability ENABLE ROW LEVEL SECURITY;
@@ -122,7 +126,7 @@ BEGIN
     VALUES (
       match_id,
       player_rec.id,
-      player_rec.name != bye_player_name  -- Bye player starts as unavailable
+      NULL  -- All players start with no response
     )
     ON CONFLICT (match_day_id, player_id) DO NOTHING;
   END LOOP;
@@ -140,7 +144,7 @@ The bye rotation is calculated in the application layer:
 
 ## Quick Setup Commands
 
-Run these in your Supabase SQL Editor:
+Run these in your Railway PostgreSQL Query tab:
 
 ```sql
 -- 1. Create tables
@@ -162,7 +166,7 @@ CREATE TABLE availability (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   match_day_id UUID REFERENCES match_days(id) ON DELETE CASCADE,
   player_id UUID REFERENCES players(id) ON DELETE CASCADE,
-  is_available BOOLEAN DEFAULT TRUE,
+  is_available BOOLEAN DEFAULT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(match_day_id, player_id)
 );
@@ -180,15 +184,5 @@ INSERT INTO players (name, rotation_order) VALUES
   ('Tim', 4),
   ('Jay', 5);
 
--- 4. Enable RLS and create policies
-ALTER TABLE players ENABLE ROW LEVEL SECURITY;
-ALTER TABLE match_days ENABLE ROW LEVEL SECURITY;
-ALTER TABLE availability ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Allow public read on players" ON players FOR SELECT USING (true);
-CREATE POLICY "Allow public read on match_days" ON match_days FOR SELECT USING (true);
-CREATE POLICY "Allow public read on availability" ON availability FOR SELECT USING (true);
-CREATE POLICY "Allow public insert on match_days" ON match_days FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public insert on availability" ON availability FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update on availability" ON availability FOR UPDATE USING (true);
+-- 4. (Optional) Enable RLS and create policies - see RLS section above
 ```
