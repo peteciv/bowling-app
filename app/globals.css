@@ -34,11 +34,6 @@ body {
   }
 }
 
-/* Prevent pull-to-refresh on mobile */
-body {
-  overscroll-behavior-y: contain;
-}
-
 /* Remove tap highlight on mobile */
 button,
 a {
