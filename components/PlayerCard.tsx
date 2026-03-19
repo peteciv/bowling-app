@@ -14,13 +14,24 @@ export function PlayerCard({ playerData, onToggle }: PlayerCardProps) {
 
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
-    if (value === 'null') {
-      onToggle(player.id, null);
-    } else if (value === 'true') {
-      onToggle(player.id, true);
-    } else {
-      onToggle(player.id, false);
+    const nextValue: boolean | null =
+      value === 'null' ? null : value === 'true';
+
+    const hasSubmittedAvailability = isAvailable !== null;
+    const isChangingSubmittedValue =
+      hasSubmittedAvailability && nextValue !== isAvailable;
+
+    if (isChangingSubmittedValue) {
+      const didConfirm = window.confirm(
+        'Please confirm you want to change your availability.'
+      );
+
+      if (!didConfirm) {
+        return;
+      }
     }
+
+    onToggle(player.id, nextValue);
   };
 
   return (

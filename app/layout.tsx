@@ -20,8 +20,6 @@ export const viewport: Viewport = {
   themeColor: '#D32F2F',
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
 export default function RootLayout({
@@ -38,19 +36,21 @@ export default function RootLayout({
       </head>
       <body>
         {children}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                  navigator.serviceWorker.register('/sw.js')
-                    .then((reg) => console.log('SW registered'))
-                    .catch((err) => console.log('SW registration failed:', err));
-                });
-              }
-            `,
-          }}
-        />
+        {process.env.NODE_ENV === 'production' && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                if ('serviceWorker' in navigator) {
+                  window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js')
+                      .then((reg) => console.log('SW registered'))
+                      .catch((err) => console.log('SW registration failed:', err));
+                  });
+                }
+              `,
+            }}
+          />
+        )}
       </body>
     </html>
   );

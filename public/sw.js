@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bowling-app-v1';
+const CACHE_NAME = 'bowling-app-v2';
 const OFFLINE_URL = '/offline.html';
 
 // Assets to cache on install
@@ -42,27 +42,31 @@ self.addEventListener('fetch', (event) => {
   // Skip cross-origin requests
   if (!event.request.url.startsWith(self.location.origin)) return;
 
+  const url = new URL(event.request.url);
+  const isNavigationRequest = event.request.mode === 'navigate';
+  const isApiRequest = url.pathname.startsWith('/api/');
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Clone the response before caching
-        const responseClone = response.clone();
-
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseClone);
-        });
+        // Keep API responses network-only to avoid stale app data.
+        if (!isApiRequest && response.ok && response.type === 'basic') {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
 
         return response;
       })
-      .catch(() => {
-        // If network fails, try cache
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
+      .catch(() =>
+        caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse && !isApiRequest) {
             return cachedResponse;
           }
 
           // If it's a navigation request, show offline page
-          if (event.request.mode === 'navigate') {
+          if (isNavigationRequest) {
             return caches.match(OFFLINE_URL);
           }
 
@@ -70,7 +74,7 @@ self.addEventListener('fetch', (event) => {
             status: 503,
             statusText: 'Service Unavailable',
           });
-        });
-      })
+        })
+      )
   );
 });
