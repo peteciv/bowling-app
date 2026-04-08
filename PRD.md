@@ -6,7 +6,7 @@ A mobile-first PWA for the Office 10's bowling team to track player availability
 ## 2. Technical Stack
 - **Framework**: Next.js 14 (App Router)
 - **Hosting**: Vercel
-- **Database**: Supabase (PostgreSQL)
+- **Database**: Railway PostgreSQL (via pg library)
 - **UI Components**: Tailwind CSS + shadcn/ui
 - **Icons**: Lucide React
 - **PWA**: Web App Manifest + Service Worker
@@ -102,14 +102,13 @@ See `DATABASE_SCHEMA.md` for complete SQL setup.
 
 ## 8. Environment Variables
 ```
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+DATABASE_URL=postgresql://username:password@host:port/database
 TEAM_PASSWORD=your_team_password
 ```
 
 ## 9. Definition of Done
 - [ ] Next.js 14 project initialized with Tailwind + shadcn/ui
-- [ ] Supabase client configured
+- [ ] Railway PostgreSQL database configured
 - [ ] Password gate with LocalStorage persistence
 - [ ] Bye rotation calculation working correctly
 - [ ] Player availability toggles functional
